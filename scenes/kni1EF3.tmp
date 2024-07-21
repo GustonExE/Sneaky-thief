@@ -1,0 +1,233 @@
+[gd_scene load_steps=14 format=3 uid="uid://d3varad18srxb"]
+
+[ext_resource type="Texture2D" path="res://assets/characters/knight/knight.png" id="1_37i3u"]
+[ext_resource type="Script" path="res://scripts/Enemy/knight.gd" id="1_aljms"]
+
+[sub_resource type="Animation" id="Animation_tjuxr"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [0]
+}
+
+[sub_resource type="Animation" id="Animation_tlrep"]
+resource_name = "attack"
+length = 0.9
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [56, 57, 58, 59, 60, 61, 62, 63, 64, 65]
+}
+
+[sub_resource type="Animation" id="Animation_xeyea"]
+resource_name = "damage"
+length = 0.15
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1),
+"transitions": PackedFloat32Array(1, 1),
+"update": 1,
+"values": [70, 71]
+}
+
+[sub_resource type="Animation" id="Animation_3u6it"]
+resource_name = "die"
+loop_mode = 2
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1, 0.2, 0.3, 0.4, 0.5),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [84, 85, 86, 87, 88, 89]
+}
+
+[sub_resource type="Animation" id="Animation_fthow"]
+resource_name = "idle"
+length = 0.6
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [0, 1, 2, 3, 4, 5, 6]
+}
+
+[sub_resource type="Animation" id="Animation_2oqhx"]
+resource_name = "run"
+length = 0.6
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [14, 15, 16, 17, 18, 19, 20]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_cm5c0"]
+_data = {
+"RESET": SubResource("Animation_tjuxr"),
+"attack": SubResource("Animation_tlrep"),
+"damage": SubResource("Animation_xeyea"),
+"die": SubResource("Animation_3u6it"),
+"idle": SubResource("Animation_fthow"),
+"run": SubResource("Animation_2oqhx")
+}
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_5bfa1"]
+radius = 6.0
+height = 16.0
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_fw0sb"]
+radius = 6.0
+height = 16.0
+
+[sub_resource type="GDScript" id="GDScript_ey42t"]
+script/source = "extends Node
+
+@export var initial_state: State
+
+var current_state: State
+var states: Dictionary = {}
+
+func _ready():
+	for child in get_children():
+		if child is State:
+			states[child.name.to_lower()] = child
+			child.transitioned.connect(on_child_transition)
+		if initial_state:
+			initial_state.enter()
+			current_state = initial_state
+
+func _process(delta):
+	if current_state:
+		current_state.update(delta)
+		
+func _physics_process(delta):
+	if current_state:
+		current_state.physics_update(delta)
+		
+func on_child_transition(state, new_state_name):
+	if state != current_state:
+		return
+	
+	var new_state = states.get(new_state_name.to_lower())
+	if !new_state:
+		return
+	
+	if current_state:
+		current_state.exit()
+		
+	new_state.enter()
+	current_state = new_state
+"
+
+[sub_resource type="GDScript" id="GDScript_t8h2k"]
+script/source = "extends State
+class_name EnemyIdle
+
+@export var enemy: CharacterBody2D
+@export var max_speed: int = 100
+@export var acceleration: int = 50
+
+var direction = 1
+var wander_time: float
+
+func randomize_wander():
+	wander_time = randf_range(1, 3)
+	
+func enter():
+	randomize_wander()
+
+func update(_delta: float):
+	if wander_time > 0:
+		wander_time -= _delta
+	
+	else:
+		randomize_wander()
+		
+func physics_update(delta: float):
+	if !enemy.raycast.is_colliding():
+		direction *= -1
+		enemy.velocity.x = 0  # Reset velocity when changing direction to avoid instant speed gain
+
+	enemy.velocity.x += direction * acceleration
+	enemy.velocity.x = clamp(enemy.velocity.x, -max_speed, max_speed)
+
+	enemy.sprite.flip_h = (direction == 1)
+	enemy.raycast.position.x = (5 * direction) * -1
+	
+	
+"
+
+[node name="Knight" type="CharacterBody2D"]
+script = ExtResource("1_aljms")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(0, -16)
+texture = ExtResource("1_37i3u")
+hframes = 14
+vframes = 7
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+"": SubResource("AnimationLibrary_cm5c0")
+}
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -8)
+shape = SubResource("CapsuleShape2D_5bfa1")
+
+[node name="RayCast" type="RayCast2D" parent="."]
+position = Vector2(5, -2)
+target_position = Vector2(0, 5)
+
+[node name="Hitbox" type="Area2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hitbox"]
+visible = false
+position = Vector2(0, -8)
+shape = SubResource("CapsuleShape2D_fw0sb")
+
+[node name="StateMachine" type="Node" parent="." node_paths=PackedStringArray("initial_state")]
+script = SubResource("GDScript_ey42t")
+initial_state = NodePath("Idle")
+
+[node name="Idle" type="Node" parent="StateMachine"]
+script = SubResource("GDScript_t8h2k")
